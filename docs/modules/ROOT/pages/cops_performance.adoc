@@ -47,7 +47,7 @@ NOTE: Required Ruby version: 2.7
 This cop identifies places where slicing arrays with semi-infinite ranges
 can be replaced by `Array#take` and `Array#drop`.
 This cop was created due to a mistake in microbenchmark and hence is disabled by default.
-Refer https://github.com/rubocop-hq/rubocop-performance/pull/175#issuecomment-731892717
+Refer https://github.com/rubocop/rubocop-performance/pull/175#issuecomment-731892717
 This cop is also unsafe for string slices because strings do not have `#take` and `#drop` methods.
 
 === Examples
@@ -55,11 +55,11 @@ This cop is also unsafe for string slices because strings do not have `#take` an
 [source,ruby]
 ----
 # bad
-# array[..2]
-# array[...2]
-# array[2..]
-# array[2...]
-# array.slice(..2)
+array[..2]
+array[...2]
+array[2..]
+array[2...]
+array.slice(..2)
 
 # good
 array.take(3)
@@ -548,16 +548,17 @@ NOTE: Required Ruby version: 2.5
 | Enabled by default | Safe | Supports autocorrection | VersionAdded | VersionChanged
 
 | Enabled
-| Yes
-| Yes
+| No
+| Yes (Unsafe)
 | 1.6
-| -
+| 1.11
 |===
 
 In Ruby 2.5, `String#delete_prefix` has been added.
 
 This cop identifies places where `gsub(/\Aprefix/, '')` and `sub(/\Aprefix/, '')`
 can be replaced by `delete_prefix('prefix')`.
+It is marked as unsafe by default because `Pathname` has `sub` but not `delete_prefix`.
 
 This cop has `SafeMultiline` configuration option that `true` by default because
 `^prefix` is unsafe as it will behave incompatible with `delete_prefix`
@@ -621,16 +622,17 @@ NOTE: Required Ruby version: 2.5
 | Enabled by default | Safe | Supports autocorrection | VersionAdded | VersionChanged
 
 | Enabled
-| Yes
-| Yes
+| No
+| Yes (Unsafe)
 | 1.6
-| -
+| 1.11
 |===
 
 In Ruby 2.5, `String#delete_suffix` has been added.
 
 This cop identifies places where `gsub(/suffix\z/, '')` and `sub(/suffix\z/, '')`
 can be replaced by `delete_suffix('suffix')`.
+It is marked as unsafe by default because `Pathname` has `sub` but not `delete_suffix`.
 
 This cop has `SafeMultiline` configuration option that `true` by default because
 `suffix$` is unsafe as it will behave incompatible with `delete_suffix?`
@@ -780,7 +782,7 @@ str.end_with?(var1, var2)
 | Yes
 | Yes (Unsafe)
 | 0.36
-| 1.6
+| 1.10
 |===
 
 This cop identifies unnecessary use of a regex where `String#end_with?` would suffice.
@@ -835,10 +837,6 @@ for receiver is multiline string.
 
 |===
 | Name | Default value | Configurable values
-
-| AutoCorrect
-| `false`
-| Boolean
 
 | SafeMultiline
 | `true`
@@ -919,7 +917,8 @@ waldo.size
 | -
 |===
 
-This cop is used to identify usages of
+This cop is used to identify usages of `map { ... }.flatten` and
+change them to use `flat_map { ... }` instead.
 
 === Examples
 
@@ -1041,6 +1040,46 @@ file.each_line { |l| puts l }
 === References
 
 * https://docs.gitlab.com/ee/development/performance.html#reading-from-files-and-other-data-sources
+
+== Performance/MapCompact
+
+NOTE: Required Ruby version: 2.7
+
+|===
+| Enabled by default | Safe | Supports autocorrection | VersionAdded | VersionChanged
+
+| Pending
+| Yes
+| Yes (Unsafe)
+| 1.11
+| -
+|===
+
+In Ruby 2.7, `Enumerable#filter_map` has been added.
+
+This cop identifies places where `map { ... }.compact` can be replaced by `filter_map`.
+It is marked as unsafe auto-correction by default because `map { ... }.compact`
+that is not compatible with `filter_map`.
+
+[source,ruby]
+----
+[true, false, nil].compact              #=> [true, false]
+[true, false, nil].filter_map(&:itself) #=> [true]
+----
+
+=== Examples
+
+[source,ruby]
+----
+# bad
+ary.map(&:foo).compact
+ary.collect(&:foo).compact
+
+# good
+ary.filter_map(&:foo)
+ary.map(&:foo).compact!
+ary.compact.map(&:foo)
+----
 
 == Performance/MethodObjectAsBlock
 
@@ -1197,6 +1236,47 @@ end
 
 * https://github.com/JuanitoFatas/fast-ruby#proccall-and-block-arguments-vs-yieldcode
 
+== Performance/RedundantEqualityComparisonBlock
+
+NOTE: Required Ruby version: 2.5
+
+|===
+| Enabled by default | Safe | Supports autocorrection | VersionAdded | VersionChanged
+
+| Pending
+| No
+| Yes (Unsafe)
+| 1.10
+| -
+|===
+
+This cop checks for uses `Enumerable#all?`, `Enumerable#any?`, `Enumerable#one?`,
+and `Enumerable#none?` are compared with `===` or similar methods in block.
+
+By default, `Object#===` behaves the same as `Object#==`, but this
+behavior is appropriately overridden in subclass. For example,
+`Range#===` returns `true` when argument is within the range.
+Therefore, It is marked as unsafe by default because `===` and `==`
+do not always behave the same.
+
+=== Examples
+
+[source,ruby]
+----
+# bad
+items.all? { |item| pattern === item }
+items.all? { |item| item == other }
+items.all? { |item| item.is_a?(Klass) }
+items.all? { |item| item.kind_of?(Klass) }
+
+# good
+items.all?(pattern)
+----
+
+=== References
+
+* https://github.com/rails/rails/pull/41363
+
 == Performance/RedundantMatch
 
 |===
@@ -1234,16 +1314,19 @@ return value unless regex =~ 'str'
 | Enabled by default | Safe | Supports autocorrection | VersionAdded | VersionChanged
 
 | Enabled
-| Yes
-| Yes
+| No
+| Yes (Unsafe)
 | 0.36
-| -
+| 1.11
 |===
 
 This cop identifies places where `Hash#merge!` can be replaced by
 `Hash#[]=`.
 You can set the maximum number of key-value pairs to consider
 an offense with `MaxKeyValuePairs`.
+
+This cop is marked as unsafe because RuboCop cannot determine if the
+receiver of `merge!` is actually a hash or not.
 
 === Examples
 
@@ -1364,28 +1447,28 @@ str[0..2].chars
 # bad
 str.chars.first
 str.chars.first(2)
-str.chars.last
-str.chars.last(2)
 
 # good
 str[0]
 str[0...2].chars
-str[-1]
-str[-2..-1].chars
 
 # bad
 str.chars.take(2)
-str.chars.drop(2)
 str.chars.length
 str.chars.size
 str.chars.empty?
 
 # good
 str[0...2].chars
-str[2..-1].chars
 str.length
 str.size
 str.empty?
+
+# For example, if the receiver is a blank string, it will be incompatible.
+# If a negative value is specified for the receiver, `nil` is returned.
+str.chars.last    # Incompatible with `str[-1]`.
+str.chars.last(2) # Incompatible with `str[-2..-1].chars`.
+str.chars.drop(2) # Incompatible with `str[2..-1].chars`.
 ----
 
 == Performance/RegexpMatch
@@ -1493,15 +1576,23 @@ end
 This cop is used to identify usages of `reverse.each` and
 change them to use `reverse_each` instead.
 
+If the return value is used, it will not be detected because the result will be different.
+
+[source,ruby]
+----
+[1, 2, 3].reverse.each {} #=> [3, 2, 1]
+[1, 2, 3].reverse_each {} #=> [1, 2, 3]
+----
+
 === Examples
 
 [source,ruby]
 ----
 # bad
-[].reverse.each
+items.reverse.each
 
 # good
-[].reverse_each
+items.reverse_each
 ----
 
 === References
@@ -1534,6 +1625,36 @@ array.reverse.first
 # good
 array.last(5).reverse
 array.last
+----
+
+== Performance/SelectMap
+
+NOTE: Required Ruby version: 2.7
+
+|===
+| Enabled by default | Safe | Supports autocorrection | VersionAdded | VersionChanged
+
+| Disabled
+| Yes
+| No
+| 1.11
+| -
+|===
+
+In Ruby 2.7, `Enumerable#filter_map` has been added.
+
+This cop identifies places where `select.map` can be replaced by `filter_map`.
+
+=== Examples
+
+[source,ruby]
+----
+# bad
+ary.select(&:foo).map(&:bar)
+ary.filter(&:foo).map(&:bar)
+
+# good
+ary.filter_map { |o| o.bar if o.foo }
 ----
 
 == Performance/Size
@@ -1659,7 +1780,7 @@ str.squeeze!('a')
 | Yes
 | Yes (Unsafe)
 | 0.36
-| 1.6
+| 1.10
 |===
 
 This cop identifies unnecessary use of a regex where `String#start_with?` would suffice.
@@ -1714,10 +1835,6 @@ for receiver is multiline string.
 
 |===
 | Name | Default value | Configurable values
-
-| AutoCorrect
-| `false`
-| Boolean
 
 | SafeMultiline
 | `true`

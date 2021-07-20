@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe RuboCop::Cop::Performance::BindCall, :config do
-  # TODO: The following is no longer required when RuboCop 0.78 or lower support will be dropped.
-  # https://github.com/rubocop-hq/rubocop/pull/7605
-  let(:ruby_version) { 2.7 }
-
   context 'TargetRubyVersion <= 2.6', :ruby26 do
     it 'does not register an offense when using `bind(obj).call(args, ...)`' do
       expect_no_offenses(<<~RUBY)
@@ -22,6 +18,28 @@ RSpec.describe RuboCop::Cop::Performance::BindCall, :config do
 
       expect_correction(<<~RUBY)
         umethod.bind_call(obj, foo, bar)
+      RUBY
+    end
+
+    it 'registers an offense when using `Foo.do_something.bind(obj).call`' do
+      expect_offense(<<~RUBY)
+        Foo.do_something.bind(obj).call
+                         ^^^^^^^^^^^^^^ Use `bind_call(obj)` instead of `bind(obj).call()`.
+      RUBY
+
+      expect_correction(<<~RUBY)
+        Foo.do_something.bind_call(obj)
+      RUBY
+    end
+
+    it 'registers an offense when using `CONSTANT.bind(obj).call`' do
+      expect_offense(<<~RUBY)
+        CONSTANT.bind(obj).call
+                 ^^^^^^^^^^^^^^ Use `bind_call(obj)` instead of `bind(obj).call()`.
+      RUBY
+
+      expect_correction(<<~RUBY)
+        CONSTANT.bind_call(obj)
       RUBY
     end
 

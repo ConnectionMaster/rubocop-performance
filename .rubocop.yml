@@ -12,8 +12,17 @@ AllCops:
     - 'vendor/**/*'
     - 'spec/fixtures/**/*'
     - 'tmp/**/*'
-  TargetRubyVersion: 2.4
+  TargetRubyVersion: 2.5
   SuggestExtensions: false
+
+InternalAffairs/NodeMatcherDirective:
+  Enabled: false
+
+Naming/InclusiveLanguage:
+  FlaggedTerms:
+    offence:
+      Suggestions:
+        - offense
 
 Naming/PredicateName:
   # Method define macros for dynamically generated method.

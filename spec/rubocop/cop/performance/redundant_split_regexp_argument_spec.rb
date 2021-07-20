@@ -13,6 +13,16 @@ RSpec.describe RuboCop::Cop::Performance::RedundantSplitRegexpArgument, :config 
     expect_no_offenses("'a,b,c'.split(/,+/)")
   end
 
+  it 'accepts when using split method with ignorecase regexp option' do
+    expect_no_offenses("'fooSplitbar'.split(/split/i)")
+  end
+
+  it 'accepts when `split` method argument is exactly one spece regexp `/ /`' do
+    expect_no_offenses(<<~RUBY)
+      'foo         bar'.split(/ /)
+    RUBY
+  end
+
   it 'registers an offense when the method is split and correctly removes escaping characters' do
     expect_offense(<<~RUBY)
       'a,b,c'.split(/\\./)
@@ -76,6 +86,17 @@ RSpec.describe RuboCop::Cop::Performance::RedundantSplitRegexpArgument, :config 
 
     expect_correction(<<~RUBY)
       'a,b,c'.split(",")
+    RUBY
+  end
+
+  it 'registers and corrects an offense when `split` method argument is two or more speces regexp `/  /`' do
+    expect_offense(<<~RUBY)
+      'foo         bar'.split(/  /)
+                              ^^^^ Use string as argument instead of regexp.
+    RUBY
+
+    expect_correction(<<~RUBY)
+      'foo         bar'.split("  ")
     RUBY
   end
 end
