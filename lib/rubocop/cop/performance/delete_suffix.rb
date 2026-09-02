@@ -64,12 +64,12 @@ module RuboCop
         }.freeze
 
         def_node_matcher :delete_suffix_candidate?, <<~PATTERN
-          (call $!nil? ${:gsub :gsub! :sub :sub!} (regexp (str $#literal_at_end?) (regopt)) (str $_))
+          (call !nil? ${:gsub :gsub! :sub :sub!} (regexp (str $#literal_at_end?) (regopt)) (str $_))
         PATTERN
 
         # rubocop:disable-next Metrics/AbcSize
         def on_send(node)
-          return unless (receiver, bad_method, regexp_str, replace_string = delete_suffix_candidate?(node))
+          return unless (bad_method, regexp_str, replace_string = delete_suffix_candidate?(node))
           return unless replace_string.empty?
 
           good_method = PREFERRED_METHODS[bad_method]
@@ -81,9 +81,7 @@ module RuboCop
             regexp_str = interpret_string_escapes(regexp_str)
             string_literal = to_string_literal(regexp_str)
 
-            new_code = "#{receiver.source}#{node.loc.dot.source}#{good_method}(#{string_literal})"
-
-            corrector.replace(node, new_code)
+            corrector.replace(node.loc.selector.join(node.source_range.end), "#{good_method}(#{string_literal})")
           end
         end
         alias on_csend on_send

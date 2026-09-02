@@ -256,4 +256,18 @@ RSpec.describe RuboCop::Cop::Performance::DeletePrefix, :config do
       RUBY
     end
   end
+
+  context 'when the receiver is itself a chained call' do
+    it 'registers an offense for the outer call' do
+      expect_offense(<<~'RUBY')
+        s.sub(/\Aa/, '').sub(/\Ab/, '')
+          ^^^ Use `delete_prefix` instead of `sub`.
+                         ^^^ Use `delete_prefix` instead of `sub`.
+      RUBY
+
+      expect_correction(<<~RUBY)
+        s.delete_prefix('a').delete_prefix('b')
+      RUBY
+    end
+  end
 end
