@@ -135,4 +135,21 @@ RSpec.describe RuboCop::Cop::Performance::StringIdentifierArgument, :config do
       attr('foo')
     RUBY
   end
+
+  it 'does not register an offense when the string is not valid in its encoding' do
+    expect_no_offenses(<<~'RUBY')
+      a.send("\xF8")
+    RUBY
+  end
+
+  it 'registers an offense when the string is valid but not ASCII' do
+    expect_offense(<<~RUBY)
+      a.send("é")
+             ^^^ Use `:é` instead of `"é"`.
+    RUBY
+
+    expect_correction(<<~RUBY)
+      a.send(:é)
+    RUBY
+  end
 end
