@@ -64,6 +64,7 @@ module RuboCop
 
           string_arguments(node).each do |string_argument|
             string_argument_value = string_argument.value
+            next unless string_argument_value.valid_encoding?
             next if string_argument_value.include?(' ') || string_argument_value.include?('::')
 
             register_offense(string_argument, string_argument_value)
