@@ -1,0 +1,1 @@
+* [#537](https://github.com/rubocop/rubocop-performance/pull/537): Fix an error for `Performance/DeleteSuffix` and `Performance/DeletePrefix` when the receiver is itself a chained `sub` call. ([@viralpraxis][])
